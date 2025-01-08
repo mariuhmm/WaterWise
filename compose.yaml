@@ -1,0 +1,67 @@
+services:  
+  backend:  
+    build: ./backend  
+    ports:
+      - "8080:8080"  
+    environment:  
+      - DB_ADDRESS=jdbc:mysql://database:3306  
+      - DB_DATABASE=template_db  
+      - DB_USER=root  
+      - DB_PASSWORD=pwd  
+      # - SPRING_PROFILES_ACTIVE=testH2   # Comment out to run backend with MariaDB, uncomment to run backend with H2
+    networks:  
+      - backend-database  
+      - backend-frontend  
+    volumes:
+      - ./backend/src:/workspace/app/src
+      - ./backend/build.gradle:/workspace/app/build.gradle
+      - ./backend/gradlew:/workspace/app/gradlew
+      - ./backend/gradle/wrapper:/workspace/app/gradle/wrapper
+
+  database:  
+    build: ./database  
+    environment:  
+      - MYSQL_ROOT_PASSWORD=pwd  
+      - MYSQL_DATABASE=template_db  
+    volumes:  
+      - mariadb_data:/var/lib/mysql
+    networks:  
+      - backend-database  
+    ports:
+      - "3306:3306"
+
+  frontend:  
+    build: ./frontend  
+    ports:
+      - "3000:3000"  
+    environment:  
+      - BACKEND_PROXY=http://backend:8080
+      - DATA_SERVICE_PROXY=http://data:8081
+    networks:  
+      - backend-frontend  
+    volumes:
+      - ./frontend:/usr/src/app
+      - /usr/src/app/node_modules
+
+  data:  # The Data application service
+    build: ./data  
+    ports:
+      - "8081:8081"
+    environment:
+      - DB_HOST=database
+      - DB_DATABASE=template_db 
+      - DB_USER=root
+      - DB_PASSWORD=pwd
+    depends_on:
+      - database
+    networks:
+      - backend-database
+      - backend-frontend
+
+
+volumes:
+  mariadb_data:  # Defines a named volume 'mariadb_data' for the MySQL service to use for data persistence
+
+networks: # Defines the networks used by the services
+  backend-database:  # Network used by the backend and database services
+  backend-frontend: # Network used by the backend and frontend services
